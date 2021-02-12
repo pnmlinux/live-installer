@@ -4,7 +4,9 @@ all: clean build
 
 build: buildmo
 	mkdir -p build/usr/lib/ || true
+
 	cp -prfv live-installer build/usr/lib/
+
 	#set parmissions
 	chmod 755 -R build
 	chown root -R build
@@ -20,12 +22,9 @@ buildmo:
 	done \
 
 install:
-	mkdir -p $(DESTDIR)/usr/share/applications/
-	mkdir -p $(DESTDIR)/usr/bin/
 	cp -prfv build/* $(DESTDIR)/
 	install live-installer.desktop $(DESTDIR)/usr/share/applications/live-installer.desktop
 	install live-installer.sh $(DESTDIR)/usr/bin/live-installer
-
 
 uninstall:
 	rm -rf $(DESTDIR)/usr/lib/live-installer

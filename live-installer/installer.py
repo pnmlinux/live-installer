@@ -8,6 +8,7 @@ import subprocess
 import sys
 import parted
 import partitioning
+import config
 
 gettext.install("live-installer", "/usr/share/locale")
 
@@ -23,7 +24,8 @@ class InstallerEngine:
         #sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
         # find the squashfs..
-        self.media = '/dev/loop0'
+        self.media = config.main["loop_directory"]
+
         if(not os.path.exists(self.media)):
             print("Critical Error: Live medium (%s) not found!" % self.media)
             #sys.exit(1)
@@ -70,6 +72,11 @@ class InstallerEngine:
         SOURCE = "/source/"
         DEST = "/target/"
         EXCLUDE_DIRS = "home/* dev/* proc/* sys/* tmp/* run/* mnt/* media/* lost+found source target".split()
+        
+        # Add optional entries to EXCLUDE_DIRS
+        for dir in config.main["exclude_dirs"]:
+            EXCLUDE_DIRS.append(dir)
+            
         our_current = 0
         # (Valid) assumption: num-of-files-to-copy ~= num-of-used-inodes-on-/
         our_total = int(subprocess.getoutput("df --inodes /{src} | awk 'END{{ print $3 }}'".format(src=SOURCE.strip('/'))))
@@ -117,13 +124,22 @@ class InstallerEngine:
         self.update_progress(our_current, our_total, False,
                              False, ("Adding new user to the system"))
         #TODO: support encryption
-        self.do_run_in_chroot('useradd -m -g users -G wheel -s /bin/bash {username}'.format(username=self.setup.username))
+        
+        self.do_run_in_chroot('useradd -m -g users -G wheel -s {shell} {username}'.format(shell=config.main["using_shell"], username=self.setup.username))
+        
+        # Add user to addintional groups
+        for group in config.main["addintional_user_groups"]:
+            self.do_run_in_chroot("usermod -aG {} {}".format(group, self.setup.username))
+
         self.do_run_in_chroot("echo -ne \"{0}\\n{0}\\n\" | passwd {1}".format(self.setup.password1,self.setup.username))
         #TODO: sudoers support
         self.do_run_in_chroot("echo -ne \"{0}\\n{0}\\n\" | passwd".format(self.setup.password1))
 
         # Set LightDM to show user list by default
-        self.do_run_in_chroot(r"sed -i -r 's/^#?(greeter-hide-users)\s*=.*/\1=false/' /etc/lightdm/lightdm.conf")
+        if config.main["list_users_when_auto_login"]:
+            self.do_run_in_chroot(r"sed -i -r 's/^#?(greeter-hide-users)\s*=.*/\1=true/' /etc/lightdm/lightdm.conf")
+        else:
+            self.do_run_in_chroot(r"sed -i -r 's/^#?(greeter-hide-users)\s*=.*/\1=false/' /etc/lightdm/lightdm.conf")
 
         # Set autologin for user if they so elected
         if self.setup.autologin:
@@ -259,7 +275,7 @@ class InstallerEngine:
                         cmd = "mkfs.%s -F %s" % (partition.format_as, partition.path)
                     elif (partition.format_as == "jfs"):
                         cmd = "mkfs.%s -q %s" % (partition.format_as, partition.path)
-                    elif (partition.format_as in ["btrfs", "xfs"]):
+                    elif (partition.format_as == "xfs"):
                         cmd = "mkfs.%s -f %s" % (partition.format_as, partition.path)
                     elif (partition.format_as == "vfat"):
                         cmd = "mkfs.%s %s -F 32" % (partition.format_as, partition.path)
@@ -284,52 +300,10 @@ class InstallerEngine:
                         self.do_mount(partition.path, "/target", fs, None)
                         break
 
-                  if partition.mount_as == "/@" :
-                        if partition.type != "btrfs":
-                            self.error_message(message=_("ERROR: the use of @subvolumes is limited to btrfs"))
-                            return
-                        print("btrfs using /@ subvolume...")
-                        self.update_progress(3, 4, False, False, _("Mounting %(partition)s on %(mountpoint)s") % {'partition':partition.path, 'mountpoint':"/target/"})
-                        # partition.mount_as = "/"
-                        print(" ------ Mounting partition %s on %s" % (partition.path, "/target/"))
-                        fs = partition.type
-                        self.do_mount(partition.path, "/target", fs, None)
-                        os.system("btrfs subvolume create /target/@")
-                        os.system("btrfs subvolume list -p /target")
-                        print(" ------ Umount btrfs to remount subvolume /@")
-                        os.system("umount --force /target")
-                        self.do_mount(partition.path, "/target", fs, "subvol=@")
-                        break
-
-        # handle btrfs /@home subvolume-option after mounting / or /@
-        for partition in self.setup.partitions:
-            if(partition.mount_as is not None and partition.mount_as != ""):
-                  if partition.mount_as == "/@home":
-                        if partition.type != "btrfs":
-                            self.error_message(message=_("ERROR: the use of @subvolumes is limited to btrfs"))
-                            return
-                        print("btrfs using /@home subvolume...")
-                        self.update_progress(3, 4, False, False, _("Mounting %(partition)s on %(mountpoint)s") % {'partition':partition.path, 'mountpoint':"/target/"})
-                        print(" ------ Mounting partition %s on %s" % (partition.path, "/target/home"))
-                        fs = partition.type
-                        os.system("mkdir -p /target/home")
-                        self.do_mount(partition.path, "/target/home", fs, None)
-                        # if reusing a btrfs with /@home already being there wont
-                        # currently just keep it; data outside of /@home will still
-                        # be there (just not reachable from the mounted /@home subvolume)
-                        os.system("btrfs subvolume create /target/home/@home")
-                        #os.system("btrfs subvolume list -p /target/home")
-                        print(" ------- Umount btrfs to remount subvolume /@home")
-                        os.system("umount --force /target/home")
-                        self.do_mount(partition.path, "/target/home", fs, "subvol=@home")
-                        break
-
+                  
+       
         # Mount the other partitions
         for partition in self.setup.partitions:
-            if(partition.mount_as == "/@home" or partition.mount_as == "/@"):
-                # already mounted as subvolume
-                continue
-
             if(partition.mount_as is not None and partition.mount_as != "" and partition.mount_as != "/" and partition.mount_as != "swap"):
                 print(" ------ Mounting %s on %s" % (partition.path, "/target" + partition.mount_as))
                 os.system("mkdir -p /target" + partition.mount_as)
@@ -384,25 +358,11 @@ class InstallerEngine:
                         fstab.write("# %s\n" % (partition.path))
                         if(partition.mount_as == "/"):
                             fstab_fsck_option = "1"
-                        # section could be removed - just to state/document that fscheck is turned off
-                        # intentionally with /@ (same would be true if btrfs used without a subvol)
-                        # /bin/fsck.btrfs comment states to use fs-check==0 on mount
-                        elif(partition.mount_as == "/@"):
-                            fstab_fsck_option = "0"
                         else:
                             fstab_fsck_option = "0"
 
                         if("ext" in partition.type):
                             fstab_mount_options = "rw,errors=remount-ro"
-                        elif partition.type == "btrfs"  and partition.mount_as == "/@":
-                            fstab_mount_options = "rw,subvol=/@"
-                            # sort of dirty hack - we are done with subvol handling
-                            # mount_as is next used to setup the mount point
-                            partition.mount_as="/"
-                        elif partition.type == "btrfs"  and partition.mount_as == "/@home":
-                            fstab_mount_options = "rw,subvol=/@home"
-                            # sort of dirty hack - see above
-                            partition.mount_as="/home"
                         else:
                             fstab_mount_options = "defaults"
 
@@ -468,8 +428,10 @@ class InstallerEngine:
         #Keyboard settings X11
         self.update_progress(our_current, our_total, False,
                              False, ("Settings X11 keyboard options"))
-        
-        newconsolefh = open("/target/etc/X11/xorg.conf.d/10-keyboard.conf", "w")
+        if os.path.exists("/target/etc/X11/xorg.conf.d"):
+            newconsolefh = open("/target/etc/X11/xorg.conf.d/10-keyboard.conf", "w")
+        else:
+            newconsolefh = open("/target/usr/share/X11/xorg.conf.d/10-keyboard.conf", "w")
         newconsolefh.write('Section "InputClass"\n')
         newconsolefh.write('Identifier "system-keyboard"\n')
         newconsolefh.write('MatchIsKeyboard "on"\n')
@@ -502,27 +464,60 @@ class InstallerEngine:
             self.do_run_in_chroot("rm /etc/default/console-setup")
             self.do_run_in_chroot("mv /etc/default/console-setup.new /etc/default/console-setup")
 
-        consolefh = open("/target/etc/vconsole.conf", "r")
-        newconsolefh = open("/target/etc/vconsole.conf.new", "w")
-        for line in consolefh:
-            line = line.rstrip("\r\n")
-            if(line.startswith("KEYMAP=")):
-                if(self.setup.keyboard_variant is not None and self.setup.keyboard_variant != ""):
-                    newconsolefh.write("KEYMAP=\"{0}-{1}\"\n".format(self.setup.keyboard_layout, self.setup.keyboard_variant))
+        # lfs like systems uses vconsole.conf (systemd)
+        if os.path.exists("/target/etc/vconsole.conf"):
+            consolefh = open("/target/etc/vconsole.conf", "r")
+            newconsolefh = open("/target/etc/vconsole.conf.new", "w")
+            for line in consolefh:
+                line = line.rstrip("\r\n")
+                if(line.startswith("KEYMAP=")):
+                    if(self.setup.keyboard_variant is not None and self.setup.keyboard_variant != ""):
+                        newconsolefh.write("KEYMAP=\"{0}-{1}\"\n".format(self.setup.keyboard_layout, self.setup.keyboard_variant))
+                    else:
+                        newconsolefh.write("KEYMAP=\"{0}\"\n".format(self.setup.keyboard_layout))
                 else:
-                    newconsolefh.write("KEYMAP=\"{0}\"\n".format(self.setup.keyboard_layout))
-            else:
-                newconsolefh.write("%s\n" % line)
-        consolefh.close()
-        newconsolefh.close()
-        self.do_run_in_chroot("rm /etc/vconsole.conf")
-        self.do_run_in_chroot("mv /etc/vconsole.conf.new /etc/vconsole.conf")
+                    newconsolefh.write("%s\n" % line)
+            consolefh.close()
+            newconsolefh.close()
+            self.do_run_in_chroot("rm /etc/vconsole.conf")
+            self.do_run_in_chroot("mv /etc/vconsole.conf.new /etc/vconsole.conf")
+            
+        # debian like systems uses this (systemd)
+        if os.path.exists("/target/etc/default/keyboard"):
+            consolefh = open("/target/etc/default/keyboard", "r")
+            newconsolefh = open("/target/etc/default/keyboard.new", "w")
+            for line in consolefh:
+                line = line.rstrip("\r\n")
+                if(line.startswith("XKBMODEL=")):
+                    newconsolefh.write("XKBMODEL=\"%s\"\n" % self.setup.keyboard_model)
+                elif(line.startswith("XKBLAYOUT=")):
+                    newconsolefh.write("XKBLAYOUT=\"%s\"\n" % self.setup.keyboard_layout)
+                elif(line.startswith("XKBVARIANT=") and self.setup.keyboard_variant is not None and self.setup.keyboard_variant != ""):
+                    newconsolefh.write("XKBVARIANT=\"%s\"\n" % self.setup.keyboard_variant)
+                elif(line.startswith("XKBOPTIONS=")):
+                    newconsolefh.write("XKBOPTIONS=grp:ctrls_toggle")
+                else:
+                    newconsolefh.write("%s\n" % line)
+            consolefh.close()
+            newconsolefh.close()
+            self.do_run_in_chroot("rm /etc/default/keyboard")
+            self.do_run_in_chroot("mv /etc/default/keyboard.new /etc/default/keyboard")
+            
+        #Keyboard settings openrc
+        if os.path.exists("/target/etc/conf.d/keymaps"):
+            newconsolefh = open("/target/etc/conf.d/keymaps", "w")
+            if not self.setup.keyboard_layout:
+                self.setup.keyboard_layout="en"
+            if not self.setup.keyboard_variant:
+                self.setup.keyboard_variant=""
+            newconsolefh.write("keymap=\"{}{}\"\n".format(self.setup.keyboard_layout,self.setup.keyboard_variant))
+            newconsolefh.close()
 
 
         #remove pacman
-        self.update_progress(our_current, our_total, False, False, _("Clearing Pacman"))
-        print(" --> Clearing pacman")
-        self.do_run_in_chroot("yes | pacman -R archiso")
+        self.update_progress(our_current, our_total, False, False, _("Clearing package manager"))
+        print(" --> Clearing package manager")
+        self.do_run_in_chroot("yes | {}".format(config.package_manager("remove_package_with_unusing_deps", config.main["remove_packages"])))
 
         if self.setup.luks:
             with open("/target/etc/default/grub.d/61_live-installer.cfg", "w") as f:
@@ -535,18 +530,29 @@ class InstallerEngine:
         print(" --> Configuring Initramfs")
         self.update_progress(our_current, our_total, False, False, _("Genetaring initramfs"))
         our_current += 1
-        kernelversion= subprocess.getoutput("uname -r")
-        self.do_run_in_chroot("/usr/sbin/mkinitcpio -g /boot/initramfs-"+kernelversion+".img")
-        self.do_run_in_chroot("/usr/sbin/mkinitcpio -g /boot/initramfs-"+kernelversion+"-fallback.img")
+        
+        for command in config.update_initramfs():
+            self.do_run_in_chroot(command)
+        
+        try:
+            grub_prepare_commands = config.distro["grub_prepare"]
+            for command in grub_prepare_commands:
+                os.system(command)
+        except:
+            print("Grub prepare process not available for your distribution!")
 
-
-        # write MBR (grub)
+        # install GRUB bootloader (EFI & Legacy)
         print(" --> Configuring Grub")
         our_current += 1
         if(self.setup.grub_device is not None):
             self.update_progress(our_current, our_total, False, False, _("Installing bootloader"))
             print(" --> Running grub-install")
-            self.do_run_in_chroot("grub-install --force %s" % self.setup.grub_device)
+
+            if os.path.exists("/sys/firmware/efi"):
+                self.do_run_in_chroot("grub-install --target=x86_64-efi --efi-directory=/boot/efi -bootloader-id={}".format(config.main["distro_codename"]))
+            else:
+                self.do_run_in_chroot("grub-install --force %s" % self.setup.grub_device)
+
             #fix not add windows grub entry
             self.do_run_in_chroot("grub-mkconfig -o /boot/grub/grub.cfg")
             self.do_configure_grub(our_total, our_current)
@@ -558,7 +564,8 @@ class InstallerEngine:
                     self.error_message(message=_("WARNING: The grub bootloader was not configured properly! You need to configure it manually."))
                     break
         
-
+        # Custom commands
+        self.do_post_install_commands(our_total, our_current)
 
         # now unmount it
         print(" --> Unmounting partitions")
@@ -597,6 +604,12 @@ class InstallerEngine:
         grubfh = open("/var/log/live-installer-grub-output.log", "w")
         grubfh.writelines(grub_output)
         grubfh.close()
+
+    def do_post_install_commands(self, our_total, our_current):
+        self.update_progress(our_current, our_total, True, False, _("Post install commands running"))
+        print(" --> Post install commands running")
+        for command in config.main["post_install_commands"]:
+            self.do_run_in_chroot(command)
 
     def do_check_grub(self, our_total, our_current):
         self.update_progress(our_current, our_total, True, False, _("Checking bootloader"))
