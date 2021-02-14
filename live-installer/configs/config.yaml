@@ -3,12 +3,12 @@ distro_title: 17G
 distribution: auto
 
 loop_directory: /dev/loop0
-gtk_theme: Yaru-dark
+gtk_theme: WhiteSur-light
 
 initramfs_system: mkinitcpio 
 using_shell: /bin/bash
 
-list_users_when_auto_login: true
+list_users_when_auto_login: false
 autologin_enabled: true
 auto_partition_enabled: true
 manual_partition_enabled: true 
