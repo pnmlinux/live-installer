@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.37.0 -->
+<!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.18"/>
   <object class="GtkSizeGroup">
@@ -31,7 +31,7 @@
     <property name="can-focus">False</property>
     <property name="window-position">center</property>
     <property name="default-width">1</property>
-    <property name="icon">icons/17g.svg</property>
+    <property name="icon">../branding/icon.svg</property>
     <child>
       <object class="GtkBox" id="vbox1">
         <property name="visible">True</property>
@@ -42,6 +42,7 @@
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <property name="border-width">5</property>
+            <property name="visible-window">False</property>
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
@@ -117,71 +118,64 @@
           <object class="GtkNotebook" id="notebook1">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="border-width">5</property>
+            <property name="border-width">0</property>
             <property name="show-tabs">False</property>
-            <property name="show-border">False</property>
             <child>
-              <object class="GtkEventBox">
+              <object class="GtkBox" id="vbox_welcome">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="orientation">vertical</property>
+                <property name="spacing">15</property>
                 <child>
-                  <object class="GtkBox" id="vbox_welcome">
+                  <object class="GtkImage" id="image_welcome">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="halign">center</property>
-                    <property name="valign">center</property>
-                    <property name="orientation">vertical</property>
-                    <property name="spacing">15</property>
-                    <child>
-                      <object class="GtkImage" id="image_welcome">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="pixel-size">80</property>
-                        <property name="icon-name">distro</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel" id="label_welcome1">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">Welcome to the LMDE Installer.</property>
-                        <property name="justify">center</property>
-                        <attributes>
-                          <attribute name="weight" value="bold"/>
-                        </attributes>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">False</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel" id="label_welcome2">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="margin-bottom">31</property>
-                        <property name="label" translatable="yes">This program will ask you some questions and set up LMDE on your computer.</property>
-                        <property name="use-markup">True</property>
-                        <property name="justify">center</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">False</property>
-                        <property name="position">2</property>
-                      </packing>
-                    </child>
+                    <property name="pixel-size">80</property>
+                    <property name="icon-name">distro</property>
                   </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
                 </child>
-                <style>
-                  <class name="menubar"/>
-                </style>
+                <child>
+                  <object class="GtkLabel" id="label_welcome1">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Welcome to the 17g Installer.</property>
+                    <property name="justify">center</property>
+                    <attributes>
+                      <attribute name="weight" value="bold"/>
+                    </attributes>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label_welcome2">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="margin-bottom">31</property>
+                    <property name="label" translatable="yes">This program will ask you some questions and set up system on your computer.</property>
+                    <property name="use-markup">True</property>
+                    <property name="justify">center</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
               </object>
+            </child>
+            <child type="tab">
+              <placeholder/>
             </child>
             <child>
               <object class="GtkBox" id="vbox_language">
@@ -215,6 +209,9 @@
               <packing>
                 <property name="position">1</property>
               </packing>
+            </child>
+            <child type="tab">
+              <placeholder/>
             </child>
             <child>
               <object class="GtkBox" id="vbox_timezones">
@@ -362,6 +359,9 @@
                 <property name="position">2</property>
               </packing>
             </child>
+            <child type="tab">
+              <placeholder/>
+            </child>
             <child>
               <object class="GtkBox" id="vbox_keyboard">
                 <property name="visible">True</property>
@@ -499,6 +499,9 @@
                 <property name="position">3</property>
               </packing>
             </child>
+            <child type="tab">
+              <placeholder/>
+            </child>
             <child>
               <object class="GtkBox" id="vbox_user">
                 <property name="visible">True</property>
@@ -508,6 +511,7 @@
                 <property name="orientation">vertical</property>
                 <property name="spacing">6</property>
                 <child>
+                  <!-- n-columns=3 n-rows=7 -->
                   <object class="GtkGrid">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
@@ -745,7 +749,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkBox" id="autologin_box">
                         <property name="name">autologin_box</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
@@ -832,6 +836,9 @@
               <packing>
                 <property name="position">4</property>
               </packing>
+            </child>
+            <child type="tab">
+              <placeholder/>
             </child>
             <child>
               <object class="GtkBox" id="vbox_type">
@@ -1218,6 +1225,9 @@
                 <property name="position">5</property>
               </packing>
             </child>
+            <child type="tab">
+              <placeholder/>
+            </child>
             <child>
               <object class="GtkBox" id="vbox_partitions">
                 <property name="visible">True</property>
@@ -1372,7 +1382,13 @@
                 <property name="position">6</property>
               </packing>
             </child>
+            <child type="tab">
+              <placeholder/>
+            </child>
             <child>
+              <placeholder/>
+            </child>
+            <child type="tab">
               <placeholder/>
             </child>
             <child>
@@ -1409,10 +1425,19 @@
                 <property name="position">8</property>
               </packing>
             </child>
-            <child>
+            <child type="tab">
               <placeholder/>
             </child>
             <child>
+              <placeholder/>
+            </child>
+            <child type="tab">
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child type="tab">
               <placeholder/>
             </child>
             <child>
@@ -1519,11 +1544,27 @@
                 <property name="position">11</property>
               </packing>
             </child>
+            <child type="tab">
+              <placeholder/>
+            </child>
           </object>
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="label_copyright">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">17g team</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="padding">5</property>
+            <property name="position">2</property>
           </packing>
         </child>
       </object>
@@ -1532,6 +1573,134 @@
       <object class="GtkHeaderBar">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <child>
+          <object class="GtkButton" id="button_quit">
+            <property name="label">Quit</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <child>
+              <object class="GtkImage" id="progress_0">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_1">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_2">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_3">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_4">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_5">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">5</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_6">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">6</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_7">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">7</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkImage" id="progress_8">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="pixbuf">bullet-point.png</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">8</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="position">2</property>
+          </packing>
+        </child>
         <child>
           <object class="GtkButtonBox">
             <property name="visible">True</property>
@@ -1569,124 +1738,6 @@
           </object>
           <packing>
             <property name="pack-type">end</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="button_quit">
-            <property name="label">Quit</property>
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <property name="receives-default">True</property>
-          </object>
-          <packing>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <child>
-              <object class="GtkImage" id="progress_0">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_1">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_2">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_3">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_4">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">4</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_5">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">5</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_6">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">6</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_7">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">7</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="progress_8">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">8</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
             <property name="position">2</property>
           </packing>
         </child>
@@ -1696,7 +1747,7 @@
   <object class="GtkDialog" id="dialog">
     <property name="can-focus">False</property>
     <property name="border-width">5</property>
-    <property name="icon">icons/17g.svg</property>
+    <property name="icon">../branding/icon.svg</property>
     <property name="type-hint">dialog</property>
     <property name="transient-for">main_window</property>
     <child internal-child="vbox">
@@ -1745,6 +1796,7 @@
           </packing>
         </child>
         <child>
+          <!-- n-columns=3 n-rows=3 -->
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -1839,6 +1891,15 @@
                 <property name="left-attach">1</property>
                 <property name="top-attach">2</property>
               </packing>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
             </child>
           </object>
           <packing>

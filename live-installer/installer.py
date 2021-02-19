@@ -93,10 +93,7 @@ class InstallerEngine:
                                                        dst=DEST, rsync_filter=rsync_filter),
                                  shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         while rsync.poll() is None:
-            line = str(rsync.stdout.readline())
-            line = line.replace("b'", "'")
-            line = line.replace("'", "")
-            line = line.replace("\\n", "")
+            line = str(rsync.stdout.readline().decode("utf-8").replace("\n",""))
             if not line:  # still copying the previous file, just wait
                 time.sleep(0.1)
             else:
@@ -122,31 +119,44 @@ class InstallerEngine:
         os.system("cp -f /etc/resolv.conf /target/etc/resolv.conf")
 
         kernelversion = subprocess.getoutput("uname -r")
-        os.system(
-            "cp /lib/modules/{0}/vmlinuz /target/boot/vmlinuz-{0}".format(kernelversion))
+        if os.path.exists("/lib/modules/{0}/vmlinuz".format(kernelversion)):
+            os.system(
+                "cp /lib/modules/{0}/vmlinuz /target/boot/vmlinuz-{0}".format(kernelversion))
 
         # add new user
         print(" --> Adding new user")
         our_current += 1
-        self.do_run_in_chroot('ls /home | xargs userdel')
-        self.do_run_in_chroot('rm -rf /home/*')
+        try:
+            for cmd in config.distro["run_before_user_creation"]:
+                self.do_run_in_chroot(cmd)
+        except:
+            print("This action not supported for your distribution.")
         self.update_progress(our_current, our_total, False,
                              False, ("Adding new user to the system"))
         # TODO: support encryption
 
-        self.do_run_in_chroot('useradd -m -g users -G wheel -s {shell} {username}'.format(
+        self.do_run_in_chroot('useradd -m -s {shell} {username}'.format(
             shell=config.main["using_shell"], username=self.setup.username))
 
-        # Add user to addintional groups
-        for group in config.main["addintional_user_groups"]:
+        # Add user to additional groups
+        for group in config.main["additional_user_groups"]:
             self.do_run_in_chroot(
                 "usermod -aG {} {}".format(group, self.setup.username))
 
-        self.do_run_in_chroot(
-            "echo -ne \"{0}\\n{0}\\n\" | passwd {1}".format(self.setup.password1, self.setup.username))
-        # TODO: sudoers support
-        self.do_run_in_chroot(
-            "echo -ne \"{0}\\n{0}\\n\" | passwd".format(self.setup.password1))
+        if os.system("which chpasswd &>/dev/null") == 0:
+            fp = open("/target/tmp/.passwd", "w")
+            fp.write(self.setup.username +  ":" + self.setup.password1 + "\n")
+            if config.main["set_root_password"]:
+                fp.write("root:" + self.setup.password1 + "\n")
+            fp.close()
+            self.do_run_in_chroot("cat /tmp/.passwd | chpasswd")
+            os.system("rm -f /target/tmp/.passwd")
+        else:
+            self.do_run_in_chroot(
+                "echo -e \"{0}\\n{0}\\n\" | passwd {1}".format(self.setup.password1, self.setup.username))
+            if config.main["set_root_password"]:
+                self.do_run_in_chroot(
+                    "echo -e \"{0}\\n{0}\\n\" | passwd".format(self.setup.password1))
 
         # Set LightDM to show user list by default
         if config.main["list_users_when_auto_login"]:
@@ -608,7 +618,7 @@ class InstallerEngine:
         # recreate initramfs (needed in case of skip_mount also, to include things like mdadm/dm-crypt/etc in case its needed to boot a custom install)
         print(" --> Configuring Initramfs")
         self.update_progress(our_current, our_total, False,
-                             False, _("Genetaring initramfs"))
+                             False, _("Generating initramfs"))
         our_current += 1
 
         for command in config.update_initramfs():
@@ -686,10 +696,11 @@ class InstallerEngine:
         self.update_progress(0, 0, False, True, _("Installation finished"))
         print(" --> All done")
 
-    def do_run_in_chroot(self, command):
+    def do_run_in_chroot(self, command,vital=False):
         command = command.replace('"', "'").strip()
         print("chroot /target/ /bin/sh -c \"%s\"" % command)
-        os.system("chroot /target/ /bin/sh -c \"%s\"" % command)
+        if 0 != os.system("chroot /target/ /bin/sh -c \"%s\"" % command) and vital:
+            self.error_message(message=command)
 
     def do_configure_grub(self, our_total, our_current):
         self.update_progress(our_current, our_total, True,

@@ -63,7 +63,10 @@ class InstallerWindow:
         self.installer = InstallerEngine(self.setup)
 
         self.resource_dir = './resources/'
-        glade_file = os.path.join(self.resource_dir, 'interface.ui')
+        if config.main["set_alternative_ui"]:
+            glade_file = os.path.join(self.resource_dir, 'interface2.ui')
+        else:
+            glade_file = os.path.join(self.resource_dir, 'interface.ui')
         self.builder = Gtk.Builder()
         self.builder.add_from_file(glade_file)
 
@@ -90,7 +93,8 @@ class InstallerWindow:
         # set the button events (wizard_cb)
         self.builder.get_object("button_next").connect("clicked", self.wizard_cb, False)
         self.builder.get_object("button_back").connect("clicked", self.wizard_cb, True)
-        self.builder.get_object("button_quit").connect("clicked", self.quit_cb)
+        if not config.main["set_alternative_ui"]:
+            self.builder.get_object("button_quit").connect("clicked", self.quit_cb)
 
         col = Gtk.TreeViewColumn("", Gtk.CellRendererPixbuf(), pixbuf=2)
         self.builder.get_object("treeview_language_list").append_column(col)
@@ -206,7 +210,9 @@ class InstallerWindow:
         # install page
         self.builder.get_object("label_install_progress").set_text(_("Calculating file indexes ..."))
         img = self.builder.get_object("image_welcome")
-        img.set_from_file("branding/welcome.png")
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+           "branding/welcome.png", 752, 423, False)
+        img.set_from_pixbuf(pixbuf)
 
         # i18n
         self.i18n()
@@ -233,6 +239,8 @@ class InstallerWindow:
                 self.builder.get_object("box_fill").hide()
         if not config.main["autologin_enabled"]:
             self.builder.get_object("autologin_box").hide()
+        
+        self.builder.get_object("label_copyright").set_label(config.main["copyright"])
 
 
     def fullscreen(self):
@@ -256,16 +264,17 @@ class InstallerWindow:
         self.wizard_pages[self.PAGE_USER] = WizardPage(_("User account"), "avatar-default-symbolic", _("Who are you?"))
         self.wizard_pages[self.PAGE_TYPE] = WizardPage(_("Installation Type"), "drive-harddisk-system-symbolic", _("Where do you want to install system?"))
         self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage(_("Partitioning"), "drive-harddisk-system-symbolic", _("Where do you want to install system?"))
-        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage(_("Summary"), "object-select-symbolic", "Check that everything is correct")
-        self.wizard_pages[self.PAGE_INSTALL] = WizardPage(_("Installing"), "system-run-symbolic", "Please wait...")
+        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage(_("Summary"), "object-select-symbolic", _("Check that everything is correct"))
+        self.wizard_pages[self.PAGE_INSTALL] = WizardPage(_("Installing"), "system-run-symbolic", _("Please wait..."))
 
         # Buttons
-        self.builder.get_object("button_quit").set_label(_("Quit"))
+        if not config.main["set_alternative_ui"]:
+            self.builder.get_object("button_quit").set_label(_("Quit"))
         self.builder.get_object("button_back").set_label(_("Back"))
         self.builder.get_object("button_next").set_label(_("Next"))
 
         # Welcome page
-        self.builder.get_object("label_welcome1").set_text(_("Welcome to the 17g Installer."))
+        self.builder.get_object("label_welcome1").set_text(_("Welcome to the %s Installer.") % config.main["distro_title"])
         self.builder.get_object("label_welcome2").set_text(_("This program will ask you some questions and set up system on your computer."))
 
         # Language page
@@ -344,6 +353,8 @@ class InstallerWindow:
     def assign_username(self, entry, prop):
         self.setup.username = entry.props.text
         errorFound = False
+        if self.setup.username[0] in "0123456789":
+            errorFound = True
         for char in self.setup.username:
             if(char.isupper()):
                 errorFound = True
@@ -461,14 +472,8 @@ class InstallerWindow:
             from urllib.request import urlopen
         except ImportError:  # py3
             from urllib.request import urlopen
-        try:
-            lookup = str(urlopen('http://geoip.ubuntu.com/lookup').read())
-            self.cur_country_code = re.search('<CountryCode>(.*)</CountryCode>', lookup).group(1)
-            self.cur_timezone = re.search('<TimeZone>(.*)</TimeZone>', lookup).group(1)
-            if self.cur_country_code == 'None': self.cur_country_code = "US"
-            if self.cur_timezone == 'None': self.cur_timezone = "America/New_York"
-        except:
-            self.cur_country_code, self.cur_timezone = "US", "America/New_York"  # no internet connection
+        self.cur_country_code = config.main['default_country_code']
+        self.cur_timezone = config.main['default_timezone']
 
         #Load countries into memory
         countries = {}
@@ -700,11 +705,6 @@ class InstallerWindow:
         os.system(command)
         self.setup.print_setup()
 
-        # Remove preview image
-        self.builder.get_object("image_keyboard").hide()
-        self.builder.get_object("kb_spinner").hide()
-
-
     @idle
     def _on_layout_generated(self):
         filename = "/tmp/live-install-keyboard-layout.png"
@@ -812,6 +812,11 @@ class InstallerWindow:
                     errorMessage = _("Your passwords do not match.")
                     focus_widget = self.builder.get_object("entry_confirm")
                 else:
+                    if self.setup.username[0] in "0123456789":
+                        errorFound = True
+                        errorMessage = _(
+                            "Your username cannot start with numbers.")
+                        
                     for char in self.setup.username:
                         if(char.isupper()):
                             errorFound = True
@@ -919,7 +924,8 @@ class InstallerWindow:
                 self.activate_page(self.PAGE_INSTALL)
                 self.builder.get_object("button_next").set_sensitive(False)
                 self.builder.get_object("button_back").set_sensitive(False)
-                self.builder.get_object("button_quit").set_sensitive(False)
+                if not config.main["set_alternative_ui"]:
+                    self.builder.get_object("button_quit").set_sensitive(False)
                 self.do_install()
                 #self.window.resize(100, 100)
         else:
@@ -952,8 +958,11 @@ class InstallerWindow:
         top = model.append(None, (_("User settings"),))
         model.append(top, (_("Real name: ") + bold(self.setup.real_name),))
         model.append(top, (_("Username: ") + bold(self.setup.username),))
-        model.append(top, (_("Automatic login: ") + bold(_("enabled") if self.setup.autologin else _("disabled")),))
-        model.append(top, (_("Home encryption: ") + bold(_("enabled") if self.setup.ecryptfs else _("disabled")),))
+        model.append(top, (_("Password: ") + bold(len(self.setup.password1)*"*"),))
+        if config.main["autologin_enabled"]:
+            model.append(top, (_("Automatic login: ") + bold(_("enabled") if self.setup.autologin else _("disabled")),))
+        if config.main["encryption_enabled"]:
+            model.append(top, (_("Home encryption: ") + bold(_("enabled") if self.setup.ecryptfs else _("disabled")),))
         top = model.append(None, (_("System settings"),))
         model.append(top, (_("Computer's name: ") + bold(self.setup.hostname),))
         top = model.append(None, (_("Filesystem operations"),))
@@ -963,15 +972,17 @@ class InstallerWindow:
             return
         if self.setup.automated:
             model.append(top, (bold(_("Automated installation on %s") % self.setup.diskname),))
+        if config.main["lvm_enabled"]:
             model.append(top, (_("LVM: ") + bold(_("enabled") if self.setup.lvm else _("disabled")),))
+        if config.main["encryption_enabled"]:
             model.append(top, (_("Disk Encryption: ") + bold(_("enabled") if self.setup.luks else _("disabled")),))
-        else:
-            for p in self.setup.partitions:
-                if p.format_as:
-                    model.append(top, (bold(_("Format %(path)s as %(filesystem)s") % {'path':p.path, 'filesystem':p.format_as}),))
-            for p in self.setup.partitions:
-                if p.mount_as:
-                    model.append(top, (bold(_("Mount %(path)s as %(mount)s") % {'path': p.path, 'mount':p.mount_as}),))
+        for p in self.setup.partitions:
+            if p.format_as:
+                model.append(top, (bold(_("Format %(path)s as %(filesystem)s") % {'path':p.path, 'filesystem':p.format_as}),))
+        for p in self.setup.partitions:
+            if p.mount_as:
+                model.append(top, (bold(_("Mount %(path)s as %(mount)s") % {'path': p.path, 'mount':p.mount_as}),))
+        self.builder.get_object("treeview_overview").expand_all()
 
     @idle
     def show_error_dialog(self, message, detail):
