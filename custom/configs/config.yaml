@@ -1,11 +1,11 @@
 ### 17g installer config
 
 ## Distro section
-# distro_codename: linux
-# distro_title: 17G
+distro_codename: archlinux
+distro_title: PNM OS
 # distribution: auto
 # display_manager: auto
-# copyright: 17g Developer Team
+copyright: PNM Developer Team - 2021
 
 ## Base options section
 # loop_directory: /dev/loop0
@@ -18,7 +18,7 @@
 
 ## Base system section
 # initramfs_system: auto 
-# using_shell: /bin/bash
+using_shell: /bin/bash
 # use_reboot: false
 # netinstall: false
 # use_rsync: true

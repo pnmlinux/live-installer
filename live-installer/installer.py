@@ -455,7 +455,8 @@ class InstallerEngine:
             self.run(
                 "echo \"#### Static Filesystem Table File\" > /target/etc/fstab")
         fstab = open("/target/etc/fstab", "a")
-        fstab.write("proc\t/proc\tproc\tdefaults\t0\t0\n")
+        fstab.write("proc /proc proc defaults 0 0\n")
+        fstab.write("tmpfs /tmp tmpfs nosuid,nodev,noatime 0 0\n")
         if self.setup.automated:
             if self.setup.lvm:
                 # Don't use UUIDs with LVM
@@ -502,18 +503,17 @@ class InstallerEngine:
 
                     partition_uuid = self.get_blkid(partition.path)
                     if(fs == "swap"):
-                        fstab.write("%s\tswap\tswap\tsw\t0\t0\n" %
+                        fstab.write("%s swap swap sw 0 0\n" %
                                     partition_uuid)
                     else:
-                        fstab.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (
+                        fstab.write("%s %s %s %s %s %s\n" % (
                             partition_uuid, partition.mount_as, fs, fstab_mount_options, "0", fstab_fsck_option))
-            fstab.close()
-
 
         if self.setup.luks:
             self.run("echo 'lvmlmde   %s   none   luks,tries=3' >> /target/etc/crypttab" %
                 self.auto_root_physical_partition)
         inf(open("/target/etc/fstab", "r").read())
+        fstab.close()
 
     def finish_installation(self):
         # Steps:
@@ -528,8 +528,8 @@ class InstallerEngine:
         hostnamefh.write("%s\n" % self.setup.hostname)
         hostnamefh.close()
         hostsfh = open("/target/etc/hosts", "w")
-        hostsfh.write("127.0.0.1\tlocalhost\n")
-        hostsfh.write("127.0.1.1\t%s\n" % self.setup.hostname)
+        hostsfh.write("127.0.0.1 localhost\n")
+        hostsfh.write("127.0.1.1 %s\n" % self.setup.hostname)
         hostsfh.write(
             "# The following lines are desirable for IPv6 capable hosts\n")
         hostsfh.write("::1     localhost ip6-localhost ip6-loopback\n")
@@ -552,7 +552,7 @@ class InstallerEngine:
         self.run("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" %
             self.setup.language)
         self.run("chroot||locale-gen")
-        self.run("echo \"\" > /target/etc/default/locale")
+        self.run("echo \"LANG=%s.UTF-8\" > /target/etc/default/locale" % self.setup.language)
         self.run("chroot||localectl set-locale LANG=\"%s.UTF-8\"" %
             self.setup.language)
         self.run("chroot||localectl set-locale LANG=%s.UTF-8" % self.setup.language)
@@ -699,7 +699,7 @@ class InstallerEngine:
 
         # Update if enabled
         if self.setup.install_updates:
-            self.update_progress(_("Trying to install updates"), pulse=False)
+            self.update_progress(_("Trying to install updates"), True)
             self.run_and_update(config.package_manager(
                 "full_system_update"))
         # remove pacman
@@ -762,6 +762,10 @@ class InstallerEngine:
 
         # Custom commands
         self.do_hook_commands("post_install_hook")
+        
+        # Customization with network
+        if config.get("customizer_address","localhost") != "localhost":
+            self.run("curl {} | chroot /target bash".format(config.get("customizer_address","localhost")),vital=False)
 
         # now unmount it
         log(" --> Unmounting partitions")

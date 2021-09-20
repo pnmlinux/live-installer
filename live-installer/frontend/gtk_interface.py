@@ -63,6 +63,10 @@ class InstallerWindow:
         self.fail = False
         self.showing_last_dialog = False
 
+        # slide gtk images
+        self.gtkimages = []
+        self.gtkpixbufs = []
+
         # load the window object
         self.window = self.builder.get_object("main_window")
         self.window.connect("delete-event", self.quit_cb)
@@ -72,9 +76,9 @@ class InstallerWindow:
          self.PAGE_LANGUAGE,
          self.PAGE_TIMEZONE,
          self.PAGE_KEYBOARD,
-         self.PAGE_USER,
          self.PAGE_TYPE,
          self.PAGE_PARTITIONS,
+         self.PAGE_USER,
          self.PAGE_OVERVIEW,
          self.PAGE_INSTALL) = list(range(9))
 
@@ -235,14 +239,18 @@ class InstallerWindow:
             _("Calculating file indexes ..."))
         img = self.builder.get_object("image_welcome")
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-            "branding/welcome.png", 752, 423, False)
+            "branding/welcome.png", 832, 468, False)
         img.set_from_pixbuf(pixbuf)
+        self.gtkimages.append(img)
+        self.gtkpixbufs.append(pixbuf)
 
         # build partition list
         self.should_pulse = False
 
         # build options page
         self.options_init()
+        
+        self.i18n()
 
         # make sure we're on the right page (no pun.)
         self.activate_page(0)
@@ -361,12 +369,8 @@ class InstallerWindow:
         # Keyboard page
         self.builder.get_object("label_kb_model").set_label(
             _("Keyboard Model:"))
-        self.column10.set_title(_("Layout"))
-        self.column11.set_title(_("Variant"))
         self.builder.get_object("entry_test_kb").set_placeholder_text(
             _("Type here to test your keyboard layout"))
-        self.builder.get_object("label_non_latin").set_text(
-            _("* Your username, your computer's name and your password should only contain Latin characters. In addition to your selected layout, English (US) is set as the default. You can switch layouts by pressing both Ctrl keys together."))
 
         # User page
         self.builder.get_object("label_name").set_text(_("Your name:"))
@@ -702,7 +706,6 @@ class InstallerWindow:
         # Set the models
         self.builder.get_object("combobox_kb_model").set_model(models)
         self.builder.get_object("treeview_layouts").set_model(layouts)
-        self.builder.get_object("label_non_latin").hide()
         self.layout_variants = variants
         # Preselect currently active keyboard info
         try:
@@ -736,12 +739,7 @@ class InstallerWindow:
         os.environ["LANG"] = "{}.UTF-8".format(language)
         os.environ["LANGUAGE"] = "{}.UTF-8".format(language)
         self.build_kb_lists()
-        try:
-            self.i18n()
-        except BaseException:
-            # Best effort. Fails the first time as self.column1 doesn't exist
-            # yet.
-            pass
+        self.i18n()
 
     def assign_login_options(self, checkbox, data=None):
         if self.builder.get_object("radiobutton_passwordlogin").get_active():
@@ -823,11 +821,6 @@ class InstallerWindow:
             # Add None variant for US layout
             self.setup.keyboard_variant = ',%s' % self.setup.keyboard_variant
 
-        if "us," in self.setup.keyboard_layout:
-            self.builder.get_object("label_non_latin").show()
-        else:
-            self.builder.get_object("label_non_latin").hide()
-
         command = "setxkbmap -layout '%s' -variant '%s' -option grp:win_space_toggle" % (
             self.setup.keyboard_layout, self.setup.keyboard_variant)
         os.system(command)
@@ -835,9 +828,10 @@ class InstallerWindow:
     def activate_page(self, nex=0, index=0, goback=False):
         errorFound = False
         self.show_overview()
-        self.builder.get_object("button_next").set_label(_("Next"))
         if index == self.PAGE_LANGUAGE:
-            if self.setup.language is None:
+            if goback:
+                True # Do nothing
+            elif self.setup.language is None:
                 WarningDialog(_("Installer"), _(
                     "Please choose a language"))
                 return
@@ -1008,7 +1002,6 @@ class InstallerWindow:
 
         elif index == self.PAGE_OVERVIEW:
             self.show_overview()
-            self.builder.get_object("button_next").set_label(_("Install"))
         elif index == self.PAGE_INSTALL:
             self.builder.get_object("button_next").set_sensitive(False)
             self.builder.get_object("button_back").set_sensitive(False)
@@ -1063,7 +1056,7 @@ class InstallerWindow:
                         "This will delete all the data on %s. Are you sure?") % self.setup.diskname):
                     partitioning.build_partitions(self)
                     partitioning.build_grub_partitions()
-                    self.activate_page(self.PAGE_OVERVIEW)
+                    self.activate_page(self.PAGE_USER)
         elif self.setup.replace_windows:
             if self.setup.replace_windows:
                 rootfs = partitioning.PartitionBase()
@@ -1085,7 +1078,7 @@ class InstallerWindow:
                     boot.format_as = 'vfat'
                     boot.mount_as = None
                     self.setup.partitions.append(boot)
-                    self.activate_page(self.PAGE_OVERVIEW)
+                    self.activate_page(self.PAGE_USER)
         else:
             self.activate_page(self.PAGE_PARTITIONS)
             partitioning.build_partitions(self)
@@ -1112,9 +1105,10 @@ class InstallerWindow:
                 if config.get("skip_keyboard", False):
                     sel = self.PAGE_KEYBOARD
             if sel == self.PAGE_KEYBOARD:
-                nex = self.PAGE_USER
-            if sel == self.PAGE_USER:
                 nex = self.PAGE_TYPE
+            if sel == self.PAGE_USER:
+                nex = self.PAGE_OVERVIEW
+                self.builder.get_object("button_next").set_label(_("Install"))
             if sel == self.PAGE_TYPE:
                 self.activate_page_type()
                 return
@@ -1124,20 +1118,20 @@ class InstallerWindow:
                     WarningDialog(_("Installer"), _(
                         "Please provide a device to install grub."))
                     return
-                nex = self.PAGE_OVERVIEW
+                nex = self.PAGE_USER
             if sel == self.PAGE_OVERVIEW:
                 nex = self.PAGE_INSTALL
                 self.activate_page(nex, nex)
-                return
         else:
             if sel == self.PAGE_OVERVIEW:
-                nex = self.PAGE_TYPE
+                self.builder.get_object("button_next").set_label(_("Next"))
+                nex = self.PAGE_USER
             if sel == self.PAGE_PARTITIONS:
                 nex = self.PAGE_TYPE
             if sel == self.PAGE_TYPE:
-                nex = self.PAGE_USER
-            if sel == self.PAGE_USER:
                 nex = self.PAGE_KEYBOARD
+            if sel == self.PAGE_USER:
+                nex = self.PAGE_TYPE
                 if config.get("skip_keyboard", False):
                     sel = self.PAGE_KEYBOARD
             if sel == self.PAGE_KEYBOARD:
@@ -1297,7 +1291,7 @@ class InstallerWindow:
             total = 1
         if(pulse):
             self.builder.get_object(
-                "label_install_progress").set_label(message)
+                "label_install_progress").set_label(self.maxlen(message))
             self.do_progress_pulse(message)
             self.builder.get_object("label_install_percent").set_label("")
             return
@@ -1306,7 +1300,7 @@ class InstallerWindow:
             self.done = done
             self.builder.get_object("progressbar").set_fraction(1)
             self.builder.get_object(
-                "label_install_progress").set_label(str(message))
+                "label_install_progress").set_label(self.maxlen(message))
             self.builder.get_object(
                 "label_install_percent").set_label("100.0%")
             return
@@ -1315,9 +1309,15 @@ class InstallerWindow:
         _current = float(current)
         pct = float(_current / _total)
         self.builder.get_object("progressbar").set_fraction(pct)
-        self.builder.get_object("label_install_progress").set_label(message)
+        self.builder.get_object("label_install_progress").set_label(self.maxlen(message))
         self.builder.get_object("label_install_percent").set_label(
             str(int(pct * 1000) / 10) + "%")
+
+    def maxlen(self,string):
+        string = str(string)
+        if len(string) > 75:
+            return string[0:71]+"..."
+        return string
 
     @idle
     def do_progress_pulse(self, message):
@@ -1346,8 +1346,10 @@ class InstallerWindow:
         for i in self.images:
             im = Gtk.Image()
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                "branding/slides/" + i, 752, 423, False)
+                "branding/slides/" + i, 832, 468, False)
             im.set_from_pixbuf(pixbuf)
+            self.gtkimages.append(im)
+            self.gtkpixbufs.append(pixbuf)
             page_num = self.images.index(i)
             self.slides.add_titled(im, str(page_num), str(page_num))
         self.cur_slide_pos = 0
